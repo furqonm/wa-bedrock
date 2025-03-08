@@ -4,6 +4,10 @@ require 'vendor/autoload.php';
 // Set the content type to JSON
 header('Content-Type: application/json');
 
+// Enable error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get the raw POST data
@@ -12,21 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Decode the JSON input
     $inputData = json_decode($inputJson, true);
 
-    // If input is empty, use sample data
-    if (empty($inputData)) {
-        $inputData = [
-            "app" => "WhatsApp",
-            "sender" => "John Doe",
-            "message" => "Hello, this is a test message!",
-            "group_name" => "Test Group",
-            "phone" => "+1234567890"
-        ];
+    // If JSON decoding fails or is empty, fallback to $_POST
+    if (json_last_error() !== JSON_ERROR_NONE || empty($inputData)) {
+        $inputData = $_POST;
     }
+
+    // Ensure 'message' has a default value if missing
+    $inputData['message'] = $inputData['message'] ?? "Hello, this is a test message!";
 
     // Extract fields from the input data
     $app = $inputData['app'] ?? 'Unknown App';
     $sender = $inputData['sender'] ?? 'Unknown Sender';
-    $message = $inputData['message'] ?? 'No message provided';
+    $message = $inputData['message']; // This is now always set
     $groupName = $inputData['group_name'] ?? 'No group name provided';
     $phone = $inputData['phone'] ?? 'No phone number provided';
 
