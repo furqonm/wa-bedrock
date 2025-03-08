@@ -36,26 +36,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Ensure 'message' has a default value if missing
     $inputMessage = $inputData['message'] ?? "Hello, this is a test message!";
 
-    try {
-        // Prepare the request body for Amazon Nova with Guardrail & Knowledge Base
-        $body = [
-            "inferenceConfig" => [
-                "max_new_tokens" => 1000 // Set max token limit
-            ],
-            "messages" => [
-                [
-                    "role" => "user",
-                    "content" => [
-                        [
-                            "text" => $inputMessage
-                        ]
+    // Set Guardrail and Knowledge Base IDs (Replace with actual values)
+    $guardrailId = ""; // Add your Bedrock Guardrail ID here
+    $knowledgeBaseId = ""; // Add your Knowledge Base ID here
+
+    // Prepare the request body for Amazon Nova
+    $body = [
+        "inferenceConfig" => [
+            "max_new_tokens" => 1000
+        ],
+        "messages" => [
+            [
+                "role" => "user",
+                "content" => [
+                    [
+                        "text" => $inputMessage
                     ]
                 ]
-            ],
-            // "guardrailId" => $guardrailId, // Attach Guardrail for safe responses
-            // "knowledgeBaseId" => $knowledgeBaseId // Use Knowledge Base for domain-specific answers
-        ];
+            ]
+        ]
+    ];
 
+    // Check if Guardrails and Knowledge Base should be included
+    if (!empty($guardrailId)) {
+        $body["guardrailId"] = $guardrailId;
+    }
+
+    if (!empty($knowledgeBaseId)) {
+        $body["knowledgeBaseId"] = $knowledgeBaseId;
+    }
+
+    try {
         // Call Amazon Bedrock (Amazon Nova model)
         $result = $client->invokeModel([
             'modelId' => 'amazon.nova-micro-v1:0', // Amazon Nova Model
@@ -65,13 +76,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         // Decode Bedrock response
-        $bedrockResponse = json_decode($result['body']->getContents(), true);
-        
-        // Extract response content
-        $replyMessage = $bedrockResponse['messages'][0]['content'][0]['text'] ?? "No response from Amazon Nova";
+        $responseBody = $result['body']->getContents();
+        $bedrockResponse = json_decode($responseBody, true);
+
+        // Log full response for debugging
+        error_log("Bedrock Response: " . json_encode($bedrockResponse));
+
+        // Extract response content safely
+        if (!empty($bedrockResponse['messages'][0]['content'][0]['text'])) {
+            $replyMessage = $bedrockResponse['messages'][0]['content'][0]['text'];
+        } else {
+            $replyMessage = "No valid response from Amazon Nova.";
+        }
 
     } catch (AwsException $e) {
-        // Handle errors
+        // Handle errors and log them
+        error_log("Error calling Amazon Bedrock: " . $e->getMessage());
         $replyMessage = "Error calling Amazon Bedrock: " . $e->getMessage();
     }
 
