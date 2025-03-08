@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Call Amazon Bedrock with Guardrails and Knowledge Base
         $result = $client->invokeModel([
-            'modelId' => 'anthropic.claude-3-5-haiku-20241022-v1:0', // Sesuaikan dengan model Bedrock
+            'modelId' => 'amazon.nova-micro-v1:0', // Sesuaikan dengan model Bedrock
             'contentType' => 'application/json',
             'accept' => 'application/json',
             'body' => json_encode([
