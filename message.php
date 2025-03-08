@@ -11,13 +11,13 @@ header('Content-Type: application/json');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// AWS Bedrock Configuration (Menggunakan IAM Role otomatis)
+// AWS Bedrock Configuration (Using IAM Role in Beanstalk)
 $awsConfig = [
-    'region'  => 'us-east-1', // Sesuaikan dengan region Bedrock Anda
+    'region'  => 'us-east-1', // Adjust based on your AWS region
     'version' => 'latest'
 ];
 
-// Initialize Bedrock Client (IAM Role Otomatis)
+// Initialize Bedrock Client
 $client = new BedrockRuntimeClient($awsConfig);
 
 // Check if the request method is POST
@@ -34,29 +34,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Ensure 'message' has a default value if missing
-    $inputData['message'] = $inputData['message'] ?? "Hello, this is a test message!";
-
-    // Generate prompt from input
-    $prompt = $inputData['message'];
+    $inputMessage = $inputData['message'] ?? "Hello, this is a test message!";
 
     try {
-        // Call Amazon Bedrock with Guardrails and Knowledge Base
+        // Prepare the request body for Amazon Nova with Guardrail & Knowledge Base
+        $body = [
+            "inferenceConfig" => [
+                "max_new_tokens" => 1000 // Set max token limit
+            ],
+            "messages" => [
+                [
+                    "role" => "user",
+                    "content" => [
+                        [
+                            "text" => $inputMessage
+                        ]
+                    ]
+                ]
+            ],
+            // "guardrailId" => $guardrailId, // Attach Guardrail for safe responses
+            // "knowledgeBaseId" => $knowledgeBaseId // Use Knowledge Base for domain-specific answers
+        ];
+
+        // Call Amazon Bedrock (Amazon Nova model)
         $result = $client->invokeModel([
-            'modelId' => 'amazon.nova-micro-v1:0', // Sesuaikan dengan model Bedrock
+            'modelId' => 'amazon.nova-micro-v1:0', // Amazon Nova Model
             'contentType' => 'application/json',
             'accept' => 'application/json',
-            'body' => json_encode([
-                'prompt' => $prompt,
-                'max_tokens' => 200,
-                'temperature' => 0.5 // Kontrol kreativitas respons
-                // 'guardrailId' => 'your-guardrail-id', // Gunakan Guardrail yang sudah dibuat
-                // 'knowledgeBaseId' => 'your-knowledge-base-id' // Gunakan Knowledge Base internal
-            ])
+            'body' => json_encode($body)
         ]);
 
         // Decode Bedrock response
         $bedrockResponse = json_decode($result['body']->getContents(), true);
-        $replyMessage = $bedrockResponse['completion'] ?? "No response from Bedrock";
+        
+        // Extract response content
+        $replyMessage = $bedrockResponse['messages'][0]['content'][0]['text'] ?? "No response from Amazon Nova";
 
     } catch (AwsException $e) {
         // Handle errors
